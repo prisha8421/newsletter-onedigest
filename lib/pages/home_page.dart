@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'auth_page.dart';
+import 'profile_page.dart';
 import 'package:new_newsletter/customisations/delivery_page.dart';
 import 'package:new_newsletter/customisations/language_page.dart';
 import 'package:new_newsletter/customisations/summary_page.dart';
@@ -16,12 +18,35 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool showDigest = true;
+  String userName = 'User';
 
-  void _logout() {
-    FirebaseAuth.instance.signOut();
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      if (doc.exists) {
+        setState(() {
+          userName = doc.data()?['name'] ?? 'User';
+        });
+      }
+    }
+  }
+
+  void _logout() async {
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Logout successful!')),
+    );
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (_) => AuthPage()),
+      MaterialPageRoute(builder: (_) => const AuthPage()),
     );
   }
 
@@ -34,6 +59,15 @@ class _HomePageState extends State<HomePage> {
         title: const Text(''),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.person, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PreferencesOverviewPage()),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: TextButton(
@@ -66,11 +100,26 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 20),
-              FeatureDrawerButton(label: 'Topics & Preferences', targetPage: SummaryPage()),
-              FeatureDrawerButton(label: 'Summary Depth', targetPage: SummaryPage()),
-              FeatureDrawerButton(label: 'Tone & Format', targetPage: ToneFormatPage()),
-              FeatureDrawerButton(label: 'Language', targetPage: LanguagePage()),
-              FeatureDrawerButton(label: 'Delivery Settings', targetPage: DeliverySettingsPage()),
+              FeatureDrawerButton(
+                label: 'Topics & Preferences',
+                targetPage: SummaryPage(),
+              ),
+              FeatureDrawerButton(
+                label: 'Summary Depth',
+                targetPage: SummaryPage(),
+              ),
+              FeatureDrawerButton(
+                label: 'Tone & Format',
+                targetPage: ToneFormatPage(),
+              ),
+              FeatureDrawerButton(
+                label: 'Language',
+                targetPage: LanguagePage(),
+              ),
+              FeatureDrawerButton(
+                label: 'Delivery Settings',
+                targetPage: DeliverySettingsPage(),
+              ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: () {
@@ -134,9 +183,9 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Welcome, Name',
-            style: TextStyle(
+          Text(
+            'Welcome, $userName',
+            style: const TextStyle(
               fontSize: 35,
               fontFamily: 'Georgia',
               color: Color(0xFF3F3986),

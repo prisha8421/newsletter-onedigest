@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+
 class SummaryPage extends StatefulWidget {
   const SummaryPage({super.key});
 
@@ -28,10 +29,11 @@ class _SummaryPageState extends State<SummaryPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
+    final userDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
     final prefs = userDoc.data()?['preferences'] ?? {};
     final savedDepth = prefs['summaryDepth'];
@@ -42,11 +44,8 @@ class _SummaryPageState extends State<SummaryPage> {
       });
     } else {
       // Set and save default if none exists
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .set({
-        'preferences': {'summaryDepth': 'Brief Summary'}
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'preferences': {'summaryDepth': 'Brief Summary'},
       }, SetOptions(merge: true));
     }
   }
@@ -54,28 +53,28 @@ class _SummaryPageState extends State<SummaryPage> {
   Future<void> saveSummaryPreference() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not logged in')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('User not logged in')));
       return;
     }
 
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userDoc = FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid);
 
     try {
       await userDoc.set({
-        'preferences': {
-          'summaryDepth': selectedDepth,
-        }
+        'preferences': {'summaryDepth': selectedDepth},
       }, SetOptions(merge: true));
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Saved preference: $selectedDepth')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving preference: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error saving preference: $e')));
     }
   }
 
@@ -123,7 +122,10 @@ class _SummaryPageState extends State<SummaryPage> {
                 onPressed: saveSummaryPreference,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3F3986),
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 14,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -133,7 +135,7 @@ class _SummaryPageState extends State<SummaryPage> {
                   style: TextStyle(color: Colors.white),
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),

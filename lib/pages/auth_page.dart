@@ -16,6 +16,7 @@ class _AuthPageState extends State<AuthPage> {
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _nicknameController = TextEditingController();
 
   void toggleForm() {
     setState(() {
@@ -27,9 +28,22 @@ class _AuthPageState extends State<AuthPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE8E6FB),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFE8E6FB),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF3F3986)),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const HomePage()),
+            );
+          },
+        ),
+      ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 60),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -66,16 +80,25 @@ class _AuthPageState extends State<AuthPage> {
                 icon: Icons.lock_outline,
                 obscureText: true,
               ),
+              if (!isLogin) ...[
+                const SizedBox(height: 20),
+                _buildTextField(
+                  controller: _nicknameController,
+                  label: 'Nickname',
+                  icon: Icons.person_outline,
+                ),
+              ],
               const SizedBox(height: 30),
               ElevatedButton(
                 onPressed: () async {
                   final email = _emailController.text.trim();
                   final password = _passwordController.text.trim();
+                  final nickname = _nicknameController.text.trim();
 
-                  if (email.isEmpty || password.isEmpty) {
+                  if (email.isEmpty || password.isEmpty || (!isLogin && nickname.isEmpty)) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Please enter both email and password.'),
+                        content: Text('Please fill in all required fields.'),
                       ),
                     );
                     return;
@@ -106,7 +129,8 @@ class _AuthPageState extends State<AuthPage> {
 
                       final user = userCredential.user;
                       if (user != null) {
-                        await UserDetails.saveUserData(user);
+                        await UserDetails.saveUserData(user, nickname);
+
                       }
 
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -154,23 +178,6 @@ class _AuthPageState extends State<AuthPage> {
                       ? "Don't have an account? Sign Up"
                       : "Already have an account? Login",
                   style: const TextStyle(
-                    color: Color(0xFF3F3986),
-                    decoration: TextDecoration.underline,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HomePage()),
-                  );
-                },
-                child: const Text(
-                  '← Back to Home',
-                  style: TextStyle(
                     color: Color(0xFF3F3986),
                     decoration: TextDecoration.underline,
                     fontWeight: FontWeight.w500,

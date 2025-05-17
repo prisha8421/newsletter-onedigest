@@ -11,19 +11,20 @@ class DeliverySettingsPage extends StatefulWidget {
 
 class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
   final Set<String> selectedChannels = {};
+  User? user;
 
   @override
   void initState() {
     super.initState();
+    user = FirebaseAuth.instance.currentUser;
     _loadUserSettings();
   }
 
   Future<void> _loadUserSettings() async {
-    final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final userDoc =
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
     final prefs = userDoc.data()?['preferences'] ?? {};
     final channels = prefs['channels'];
 
@@ -32,11 +33,12 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
     } else {
       // Set default as 'Email'
       selectedChannels.add('Email');
-      // Save default to Firestore
+      // Save default to Firestore along with email
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(user.uid)
+          .doc(user!.uid)
           .set({
+        'email': user!.email,
         'preferences': {'channels': ['Email']}
       }, SetOptions(merge: true));
     }
@@ -55,7 +57,6 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
   }
 
   Future<void> saveSettings() async {
-    final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('User not logged in')),
@@ -63,10 +64,11 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
       return;
     }
 
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    final userDoc = FirebaseFirestore.instance.collection('users').doc(user!.uid);
 
     try {
       await userDoc.set({
+        'email': user!.email,
         'preferences': {
           'channels': selectedChannels.toList(),
         }
