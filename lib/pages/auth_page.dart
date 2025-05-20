@@ -99,6 +99,7 @@ class _AuthPageState extends State<AuthPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Please fill in all required fields.'),
+                        backgroundColor: Colors.redAccent,
                       ),
                     );
                     return;
@@ -107,10 +108,7 @@ class _AuthPageState extends State<AuthPage> {
                   try {
                     if (isLogin) {
                       final userCredential = await FirebaseAuth.instance
-                          .signInWithEmailAndPassword(
-                        email: email,
-                        password: password,
-                      );
+                          .signInWithEmailAndPassword(email: email, password: password);
 
                       final user = userCredential.user;
                       if (user != null) {
@@ -120,17 +118,18 @@ class _AuthPageState extends State<AuthPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Login successful!')),
                       );
+
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const HomePage()),
+                      );
                     } else {
                       final userCredential = await FirebaseAuth.instance
-                          .createUserWithEmailAndPassword(
-                        email: email,
-                        password: password,
-                      );
+                          .createUserWithEmailAndPassword(email: email, password: password);
 
                       final user = userCredential.user;
                       if (user != null) {
                         await UserDetails.saveUserData(user, nickname);
-
                       }
 
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -138,24 +137,53 @@ class _AuthPageState extends State<AuthPage> {
                           content: Text('Account created successfully!'),
                         ),
                       );
+
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (_) => const HomePage()),
+                      );
+                    }
+                  } on FirebaseAuthException catch (e) {
+                    String errorMessage;
+
+                    switch (e.code) {
+                      case 'user-not-found':
+                        errorMessage = 'No account found for that email.';
+                        break;
+                      case 'wrong-password':
+                        errorMessage = 'Incorrect password.';
+                        break;
+                      case 'email-already-in-use':
+                        errorMessage = 'That email is already registered.';
+                        break;
+                      case 'weak-password':
+                        errorMessage = 'Password should be at least 6 characters.';
+                        break;
+                      case 'invalid-email':
+                        errorMessage = 'Invalid email address.';
+                        break;
+                      default:
+                        errorMessage = 'An error occurred. Please try again.';
                     }
 
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const HomePage()),
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(errorMessage),
+                        backgroundColor: Colors.redAccent,
+                      ),
                     );
                   } catch (e) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: ${e.toString()}')),
+                      SnackBar(
+                        content: Text('Unexpected error: ${e.toString()}'),
+                        backgroundColor: Colors.redAccent,
+                      ),
                     );
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3F3986),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 60,
-                    vertical: 16,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),

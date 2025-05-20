@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
-import 'auth_page.dart';
-import 'profile_page.dart';
 import 'package:new_newsletter/customisations/delivery_page.dart';
 import 'package:new_newsletter/customisations/language_page.dart';
 import 'package:new_newsletter/customisations/summary_page.dart';
 import 'package:new_newsletter/customisations/tone_format.dart';
+import 'package:new_newsletter/services/news_service.dart';
+
+import 'package:new_newsletter/models/news_article.dart';
+import 'package:new_newsletter/widgets/article_card.dart';
+import 'auth_page.dart';
+import 'profile_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,11 +22,20 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   bool showDigest = true;
   String userName = 'User';
+  List<NewsArticle> allArticles = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadUserName();
+    _fetchAllArticles();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadUserName(); // Refresh on dependency change (e.g. after login)
   }
 
   Future<void> _loadUserName() async {
@@ -35,251 +47,161 @@ class _HomePageState extends State<HomePage> {
           userName = doc.data()?['name'] ?? 'User';
         });
       }
+    } else {
+      setState(() {
+        userName = 'Guest';
+      });
+    }
+  }
+
+  Future<void> _fetchAllArticles() async {
+    setState(() => isLoading = true);
+    try {
+      List<NewsArticle> fetchedArticles = await fetchLatestArticles();
+      fetchedArticles.sort((a, b) => (b.pubDate ?? '').compareTo(a.pubDate ?? ''));
+      setState(() {
+        allArticles = fetchedArticles;
+        isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Failed to load latest articles: $e');
+      setState(() => isLoading = false);
     }
   }
 
   void _logout() async {
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Logout successful!')),
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logout successful!')));
+    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AuthPage()));
+  }
+
+  Widget _buildDrawer() {
+    final user = FirebaseAuth.instance.currentUser;
+
+    return Drawer(
+      child: ListView(
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(color: Colors.deepPurple),
+            child: Text(
+              user != null ? 'Welcome, $userName!' : 'Welcome!',
+              style: const TextStyle(color: Colors.white, fontSize: 24),
+            ),
+          ),
+          if (user != null) ...[
+            ListTile(
+              leading: const Icon(Icons.tune),
+              title: const Text('Tone & Format'),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ToneFormatPage())),
+            ),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text('Language Preferences'),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LanguagePage())),
+            ),
+            ListTile(
+              leading: const Icon(Icons.schedule),
+              title: const Text('Delivery Settings'),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeliverySettingsPage())),
+            ),
+            ListTile(
+              leading: const Icon(Icons.notes),
+              title: const Text('Summary Settings'),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SummaryPage())),
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Logout'),
+              onTap: _logout,
+            ),
+          ] else ...[
+            ListTile(
+              leading: const Icon(Icons.login),
+              title: const Text('Login'),
+              onTap: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AuthPage()));
+              },
+            ),
+          ]
+        ],
+      ),
     );
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const AuthPage()),
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('📰 OneDigest', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+          IconButton(
+            icon: const Icon(Icons.account_circle, size: 30),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const PreferencesOverviewPage()));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToggleButtons() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        children: [
+          ChoiceChip(
+            label: const Text('Digest'),
+            selected: showDigest,
+            onSelected: (val) => setState(() => showDigest = true),
+          ),
+          const SizedBox(width: 10),
+          ChoiceChip(
+            label: const Text('Latest'),
+            selected: !showDigest,
+            onSelected: (val) => setState(() => showDigest = false),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewsFeed() {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (allArticles.isEmpty) {
+      return const Center(child: Text('No articles found.'));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchAllArticles,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: allArticles.length,
+        itemBuilder: (context, index) {
+          final article = allArticles[index];
+          return ArticleCard(article: article);
+        },
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF8981DF),
-        elevation: 0,
-        title: const Text(''),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const PreferencesOverviewPage()),
-              );
-            },
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: TextButton(
-              onPressed: _logout,
-              child: const Text(
-                'Logout',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  decoration: TextDecoration.underline,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        child: Container(
-          color: Colors.white,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-            children: [
-              const Text(
-                'Account Preferences',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontFamily: 'Poppins',
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF3F3986),
-                ),
-              ),
-              const SizedBox(height: 20),
-              FeatureDrawerButton(
-                label: 'Topics & Preferences',
-                targetPage: SummaryPage(),
-              ),
-              FeatureDrawerButton(
-                label: 'Summary Depth',
-                targetPage: SummaryPage(),
-              ),
-              FeatureDrawerButton(
-                label: 'Tone & Format',
-                targetPage: ToneFormatPage(),
-              ),
-              FeatureDrawerButton(
-                label: 'Language',
-                targetPage: LanguagePage(),
-              ),
-              FeatureDrawerButton(
-                label: 'Delivery Settings',
-                targetPage: DeliverySettingsPage(),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Newsletter sent (UI only)')),
-                  );
-                },
-                icon: const Icon(Icons.send, color: Colors.white),
-                label: const Text('Send Newsletter', style: TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3F3986),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout, color: Colors.white),
-                label: const Text('Logout', style: TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF968CE4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      appBar: AppBar(title: const Text("OneDigest")),
+      drawer: _buildDrawer(),
       body: Column(
         children: [
-          Container(
-            height: MediaQuery.of(context).size.height * 0.2,
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Color(0xFF8981DF),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                RichText(
-                  text: const TextSpan(
-                    style: TextStyle(
-                      fontSize: 60,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Poppins',
-                      letterSpacing: 1.5,
-                    ),
-                    children: [
-                      TextSpan(text: 'ONE', style: TextStyle(color: Colors.white)),
-                      TextSpan(text: 'DIGEST', style: TextStyle(color: Color(0xFF3F3986))),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Welcome, $userName',
-            style: const TextStyle(
-              fontSize: 35,
-              fontFamily: 'Georgia',
-              color: Color(0xFF3F3986),
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 12),
-            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFF8981DF),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildToggleButton('Your Digest', showDigest),
-                const SizedBox(width: 10),
-                _buildToggleButton('Saved', !showDigest),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: Text(
-                showDigest ? 'Your Digest Content (UI only)' : 'Saved Content (UI only)',
-                style: const TextStyle(fontSize: 18, color: Color(0xFF3F3986)),
-              ),
-            ),
-          ),
+          _buildHeader(),
+          _buildToggleButtons(),
+          const SizedBox(height: 10),
+          Expanded(child: _buildNewsFeed()),
         ],
-      ),
-    );
-  }
-
-  Widget _buildToggleButton(String text, bool isActive) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          showDigest = (text == 'Your Digest');
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$text selected (UI only)')),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 22),
-        decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF3F3986) : const Color(0xFF8981DF),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isActive ? const Color.fromARGB(255, 170, 161, 241) : Colors.white,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class FeatureDrawerButton extends StatelessWidget {
-  final String label;
-  final Widget targetPage;
-
-  const FeatureDrawerButton({
-    super.key,
-    required this.label,
-    required this.targetPage,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.pop(context);
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => targetPage),
-          );
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF968CE4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 16, color: Colors.white),
-        ),
       ),
     );
   }
