@@ -31,7 +31,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadUserName();
-    _loadBookmarks();
+    _loadUserPreferences();
     _fetchAllArticles();
   }
 
@@ -51,19 +51,37 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _loadBookmarks() async {
+  Future<void> _loadUserPreferences() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final snapshot = await FirebaseFirestore.instance
+    final bookmarksSnap = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
         .collection('bookmarks')
         .get();
 
+    final likesSnap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('likes')
+        .get();
+
+    final dislikesSnap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .collection('dislikes')
+        .get();
+
     setState(() {
       bookmarkedIds.clear();
-      bookmarkedIds.addAll(snapshot.docs.map((doc) => doc.id));
+      bookmarkedIds.addAll(bookmarksSnap.docs.map((doc) => doc.id));
+
+      likedArticles.clear();
+      likedArticles.addEntries(likesSnap.docs.map((doc) => MapEntry(doc.id, true)));
+
+      dislikedArticles.clear();
+      dislikedArticles.addEntries(dislikesSnap.docs.map((doc) => MapEntry(doc.id, true)));
     });
   }
 
@@ -184,9 +202,11 @@ class _HomePageState extends State<HomePage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    List<NewsArticle> displayedArticles = showDigest
-        ? allArticles.where((a) => bookmarkedIds.contains(a.id)).toList()
-        : allArticles;
+    List<NewsArticle> displayedArticles = (showDigest
+            ? allArticles.where((a) => bookmarkedIds.contains(a.id))
+            : allArticles)
+        .where((a) => !(dislikedArticles[a.id] ?? false))
+        .toList();
 
     if (displayedArticles.isEmpty) {
       return Center(child: Text(showDigest ? 'No bookmarked articles.' : 'No articles found.'));
@@ -234,19 +254,65 @@ class _HomePageState extends State<HomePage> {
                 }
               });
             },
-            onLikeToggle: () {
+            onLikeToggle: () async {
+              final user = FirebaseAuth.instance.currentUser;
+              if (user == null) return;
+
+              final likedRef = FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('likes')
+                  .doc(article.id);
+
+              final dislikedRef = FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('dislikes')
+                  .doc(article.id);
+
+              final currentLiked = likedArticles[article.id] ?? false;
+
               setState(() {
-                final current = likedArticles[article.id] ?? false;
-                likedArticles[article.id] = !current;
-                if (!current) dislikedArticles[article.id] = false;
+                likedArticles[article.id] = !currentLiked;
+                dislikedArticles[article.id] = false;
               });
+
+              if (!currentLiked) {
+                await likedRef.set({'liked': true});
+                await dislikedRef.delete();
+              } else {
+                await likedRef.delete();
+              }
             },
-            onDislikeToggle: () {
+            onDislikeToggle: () async {
+              final user = FirebaseAuth.instance.currentUser;
+              if (user == null) return;
+
+              final dislikedRef = FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('dislikes')
+                  .doc(article.id);
+
+              final likedRef = FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .collection('likes')
+                  .doc(article.id);
+
+              final currentDisliked = dislikedArticles[article.id] ?? false;
+
               setState(() {
-                final current = dislikedArticles[article.id] ?? false;
-                dislikedArticles[article.id] = !current;
-                if (!current) likedArticles[article.id] = false;
+                dislikedArticles[article.id] = !currentDisliked;
+                likedArticles[article.id] = false;
               });
+
+              if (!currentDisliked) {
+                await dislikedRef.set({'disliked': true});
+                await likedRef.delete();
+              } else {
+                await dislikedRef.delete();
+              }
             },
           );
         },
@@ -336,7 +402,7 @@ class _HomePageState extends State<HomePage> {
                 const Text('📰 OneDigest', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 IconButton(
                   icon: const Icon(Icons.account_circle, size: 30),
-                  onPressed: () => _showProfileMenu(),
+                  onPressed: _showProfileMenu,
                 ),
               ],
             ),
