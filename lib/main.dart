@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:new_newsletter/pages/auth_page.dart';
-import 'package:new_newsletter/pages/home_page.dart';
+import '../pages/auth_page.dart';
+import '../pages/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,6 +19,11 @@ class OneDigestApp extends StatelessWidget {
     return MaterialApp(
       title: 'OneDigest',
       debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        fontFamilyFallback: [
+          'NotoSans', // Ensure this matches the font family defined in pubspec.yaml
+        ],
+      ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -29,10 +34,10 @@ class OneDigestApp extends StatelessWidget {
           }
 
           if (!snapshot.hasData) {
-            return const AuthPage(); // Not logged in
+            return const AuthPage(); // User is not logged in
           }
 
-          return const HomePage(); // Always go to HomePage after login
+          return const HomePage(); // User is logged in
         },
       ),
     );

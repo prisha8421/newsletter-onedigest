@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../database/user_details.dart';
 import 'home_page.dart';
 
 class AuthPage extends StatefulWidget {
@@ -22,6 +22,36 @@ class _AuthPageState extends State<AuthPage> {
     setState(() {
       isLogin = !isLogin;
     });
+  }
+
+  Future<void> _deleteAccount() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Delete Firestore user doc
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).delete();
+        // Delete Auth user
+        await user.delete();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account deleted successfully!')),
+        );
+
+        // Navigate to AuthPage (reload)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AuthPage()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No logged in user found.')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete account: $e')),
+      );
+    }
   }
 
   @override
@@ -63,7 +93,7 @@ class _AuthPageState extends State<AuthPage> {
                     : 'Sign up to start curating your perfect newsletter experience.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Color(0xFF3F3986).withOpacity(0.7),
+                  color: const Color(0xFF3F3986).withOpacity(0.7),
                   fontSize: 14,
                 ),
               ),
@@ -110,11 +140,6 @@ class _AuthPageState extends State<AuthPage> {
                       final userCredential = await FirebaseAuth.instance
                           .signInWithEmailAndPassword(email: email, password: password);
 
-                      final user = userCredential.user;
-                      if (user != null) {
-                        await UserDetails.getUserPreferences(user.uid);
-                      }
-
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Login successful!')),
                       );
@@ -129,7 +154,10 @@ class _AuthPageState extends State<AuthPage> {
 
                       final user = userCredential.user;
                       if (user != null) {
-                        await UserDetails.saveUserData(user, nickname);
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(user.uid)
+                            .set({'name': nickname, 'email': email});
                       }
 
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -198,6 +226,31 @@ class _AuthPageState extends State<AuthPage> {
                   ),
                 ),
               ),
+
+              // Delete Account Button: Only show when logged in form is displayed
+              if (isLogin) ...[
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _deleteAccount,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 3,
+                  ),
+                  child: const Text(
+                    'Delete Account',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+
               const SizedBox(height: 20),
               TextButton(
                 onPressed: toggleForm,
@@ -250,7 +303,7 @@ class _AuthPageState extends State<AuthPage> {
           border: InputBorder.none,
           labelText: label,
           labelStyle: const TextStyle(color: Color(0xFF3F3986), fontSize: 16),
-          prefixIcon: Icon(icon, color: Color(0xFF3F3986)),
+          prefixIcon: Icon(icon, color: const Color(0xFF3F3986)),
         ),
       ),
     );

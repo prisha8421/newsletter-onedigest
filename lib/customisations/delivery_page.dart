@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:new_newsletter/services/email_service.dart';
-import 'package:new_newsletter/services/pdf_service.dart';
-import 'package:new_newsletter/services/scheduler_service.dart';
+import '../services/scheduler_service.dart';
 
 class DeliverySettingsPage extends StatefulWidget {
   const DeliverySettingsPage({super.key});

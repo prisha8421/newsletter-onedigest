@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
+import '../database/user_details.dart';
 
 class SummaryPage extends StatefulWidget {
   const SummaryPage({super.key});
@@ -59,14 +59,10 @@ class _SummaryPageState extends State<SummaryPage> {
       return;
     }
 
-    final userDoc = FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid);
-
     try {
-      await userDoc.set({
-        'preferences': {'summaryDepth': selectedDepth},
-      }, SetOptions(merge: true));
+      await UserDetails.updateUserPreferences(user.uid, {
+        'summaryDepth': selectedDepth,
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Saved preference: $selectedDepth')),

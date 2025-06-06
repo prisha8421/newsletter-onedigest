@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../database/user_details.dart';
 
 class ToneFormatPage extends StatefulWidget {
   const ToneFormatPage({super.key});
@@ -13,8 +14,17 @@ class _ToneFormatPageState extends State<ToneFormatPage> {
   String selectedTone = 'Casual';
   String selectedFormat = 'Bullet Points';
 
-  final List<String> toneOptions = ['Casual', 'Formal', 'Friendly', 'Professional'];
-  final List<String> formatOptions = ['Bullet Points', 'Paragraph', 'Brief Highlights'];
+  final List<String> toneOptions = [
+    'Casual',
+    'Formal',
+    'Friendly',
+    'Professional',
+  ];
+  final List<String> formatOptions = [
+    'Bullet Points',
+    'Paragraph',
+    'Brief Highlights',
+  ];
 
   @override
   void initState() {
@@ -26,7 +36,11 @@ class _ToneFormatPageState extends State<ToneFormatPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final userDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
     final prefs = userDoc.data()?['preferences'] ?? {};
 
     final tone = prefs['tone'];
@@ -44,10 +58,7 @@ class _ToneFormatPageState extends State<ToneFormatPage> {
     // If any of the preferences were missing, set defaults
     if (tone == null || format == null) {
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-        'preferences': {
-          'tone': selectedTone,
-          'format': selectedFormat,
-        }
+        'preferences': {'tone': selectedTone, 'format': selectedFormat},
       }, SetOptions(merge: true));
     }
   }
@@ -55,29 +66,27 @@ class _ToneFormatPageState extends State<ToneFormatPage> {
   Future<void> saveToneAndFormat() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not logged in')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('User not logged in')));
       return;
     }
 
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
-
     try {
-      await userDoc.set({
-        'preferences': {
-          'tone': selectedTone,
-          'format': selectedFormat,
-        }
-      }, SetOptions(merge: true));
+      await UserDetails.updateUserPreferences(user.uid, {
+        'tone': selectedTone,
+        'format': selectedFormat,
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saved: $selectedTone tone, $selectedFormat format')),
+        SnackBar(
+          content: Text('Saved: $selectedTone tone, $selectedFormat format'),
+        ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving preferences: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error saving preferences: $e')));
     }
   }
 
@@ -99,7 +108,11 @@ class _ToneFormatPageState extends State<ToneFormatPage> {
           children: [
             const Text(
               'Choose your preferred tone:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF3F3986)),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF3F3986),
+              ),
             ),
             const SizedBox(height: 16),
             for (String tone in toneOptions)
@@ -113,7 +126,11 @@ class _ToneFormatPageState extends State<ToneFormatPage> {
             const SizedBox(height: 24),
             const Text(
               'Choose your preferred format:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF3F3986)),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF3F3986),
+              ),
             ),
             const SizedBox(height: 16),
             for (String format in formatOptions)
@@ -130,17 +147,23 @@ class _ToneFormatPageState extends State<ToneFormatPage> {
                 onPressed: saveToneAndFormat,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3F3986),
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 14,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                 ),
                 child: const Text(
                   'Save Preferences',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),

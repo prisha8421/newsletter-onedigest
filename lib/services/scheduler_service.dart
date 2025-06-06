@@ -1,82 +1,94 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:new_newsletter/services/pdf_service.dart';
-import 'package:new_newsletter/services/email_service.dart';
+
+import '../services/pdf_service.dart';
+import '../services/email_service.dart';
+import '../services/personalised_news_service.dart';
+import '../services/customised_article.dart'; // Add this line
 
 class SchedulerService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final PDFService _pdfService = PDFService();
   final EmailService _emailService = EmailService();
+
+  late final CustomizedArticleService _customizedService;
+
   Timer? _schedulerTimer;
 
+  SchedulerService() {
+    final newsService = PersonalizedNewsService();
+    final pdfService = PDFService();
+    const aiServiceUrl = 'https://api.openai.com/v1/chat/completions'; // ✅ Replace with your actual endpoint
+
+    _customizedService = CustomizedArticleService(
+      newsService: newsService,
+      pdfService: pdfService,
+    
+    );
+  }
+
+  /// Start the scheduler for the current user
   Future<void> startScheduler() async {
-    // Cancel any existing timer
     _schedulerTimer?.cancel();
 
+    final user = _auth.currentUser;
+    if (user == null) {
+      print('No authenticated user, scheduler will not start.');
+      return;
+    }
+
     // Get user preferences
-    final userDoc = await _firestore
-        .collection('users')
-        .doc(_auth.currentUser?.uid)
-        .get();
-
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
     final preferences = userDoc.data()?['preferences'] ?? {};
-    final deliveryTime = preferences['deliveryTime'] ?? '09:00'; // Default to 9 AM
+    final deliveryTime = preferences['deliveryTime'] ?? '10:36';
 
-    // Calculate time until next delivery
     final now = DateTime.now();
     final deliveryDateTime = _parseDeliveryTime(deliveryTime);
     final timeUntilDelivery = _calculateTimeUntilDelivery(now, deliveryDateTime);
 
-    // Schedule the next delivery
+    print('📆 Scheduling newsletter delivery in $timeUntilDelivery');
+
     _schedulerTimer = Timer(timeUntilDelivery, () async {
-      await sendScheduledNewsletter();
-      // Schedule the next delivery
-      startScheduler();
+      try {
+        await sendScheduledNewsletter();
+      } catch (e) {
+        print('❌ Error in scheduled newsletter: $e');
+      }
+      // Reschedule after sending
+      await startScheduler();
     });
   }
 
+  /// Send the scheduled newsletter
   Future<void> sendScheduledNewsletter() async {
-    try {
-      final user = _auth.currentUser;
-      if (user == null) {
-        throw Exception('User not authenticated');
-      }
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('User not authenticated');
 
-      // Get user's email preferences
-      final userDoc = await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      
-      final emailAddress = user.email; // Use the authenticated user's email
-      if (emailAddress == null) {
-        throw Exception('No email address available for the user');
-      }
+    final userDoc = await _firestore.collection('users').doc(user.uid).get();
+    final emailAddress =
+        userDoc.data()?['preferences']?['emailAddress'] ?? user.email;
 
-      // Get articles since last delivery
-      final lastDelivery = await _getLastDeliveryTime();
-      final articles = await _getArticlesSinceLastDelivery(lastDelivery);
-
-      if (articles.isEmpty) {
-        throw Exception('No new articles to send');
-      }
-
-      // Generate PDF
-      final pdfFile = await _pdfService.generateNewsletterPDF(articles);
-
-      // Send email
-      await _emailService.sendNewsletterEmail(pdfFile, emailAddress);
-
-      // Update last delivery time
-      await _updateLastDeliveryTime();
-    } catch (e) {
-      print('Error sending scheduled newsletter: $e');
-      rethrow; // Rethrow to handle in the UI
+    if (emailAddress == null) {
+      throw Exception('No email address available for the user');
     }
+
+    print('📰 Generating customized newsletter for ${user.email}');
+
+    final File? pdfFile =
+        await _customizedService.generateCustomizedNewsletter(user.uid);
+
+    if (pdfFile == null) {
+      print('❌ Failed to generate customized newsletter PDF');
+      return;
+    }
+
+    await _emailService.sendNewsletterEmail(pdfFile, emailAddress);
+    await _updateLastDeliveryTime();
   }
 
+  /// Parse delivery time string (e.g. "09:30")
   DateTime _parseDeliveryTime(String time) {
     final parts = time.split(':');
     final now = DateTime.now();
@@ -89,51 +101,26 @@ class SchedulerService {
     );
   }
 
+  /// Calculate delay until next delivery time
   Duration _calculateTimeUntilDelivery(DateTime now, DateTime deliveryTime) {
-    var timeUntilDelivery = deliveryTime.difference(now);
-    if (timeUntilDelivery.isNegative) {
-      // If delivery time has passed today, schedule for tomorrow
-      timeUntilDelivery = timeUntilDelivery + const Duration(days: 1);
+    var duration = deliveryTime.difference(now);
+    if (duration.isNegative) {
+      duration += const Duration(days: 1);
     }
-    return timeUntilDelivery;
+    return duration;
   }
 
-  Future<DateTime?> _getLastDeliveryTime() async {
-    final userDoc = await _firestore
-        .collection('users')
-        .doc(_auth.currentUser?.uid)
-        .get();
-    final lastDelivery = userDoc.data()?['lastDelivery'];
-    return lastDelivery?.toDate();
-  }
-
+  /// Save last delivery timestamp to Firestore
   Future<void> _updateLastDeliveryTime() async {
-    await _firestore
-        .collection('users')
-        .doc(_auth.currentUser?.uid)
-        .update({
+    final user = _auth.currentUser;
+    if (user == null) return;
+    await _firestore.collection('users').doc(user.uid).update({
       'lastDelivery': FieldValue.serverTimestamp(),
     });
   }
 
-  Future<List<Map<String, dynamic>>> _getArticlesSinceLastDelivery(
-      DateTime? lastDelivery) async {
-    // For now, return some dummy articles for testing
-    return [
-      {
-        'title': 'Test Article 1',
-        'description': 'This is a test article for the newsletter.',
-        'url': 'https://example.com/article1',
-      },
-      {
-        'title': 'Test Article 2',
-        'description': 'Another test article for the newsletter.',
-        'url': 'https://example.com/article2',
-      },
-    ];
-  }
-
+  /// Stop the scheduler
   void dispose() {
     _schedulerTimer?.cancel();
   }
-} 
+}
