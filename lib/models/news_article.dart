@@ -1,7 +1,7 @@
 class NewsArticle {
   final String id;
   final String title;
-  final String description;  // << Make sure this is here
+  final String description;
   final String url;
   final String imageUrl;
 
@@ -12,8 +12,6 @@ class NewsArticle {
     required this.url,
     required this.imageUrl,
   });
-
-  // Add fromMap and toMap for Firestore integration:
 
   factory NewsArticle.fromMap(Map<String, dynamic> map) {
     return NewsArticle(

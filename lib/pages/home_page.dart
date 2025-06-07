@@ -1,14 +1,19 @@
+
+// lib/pages/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../services/news_service.dart';
+import '../models/news_article.dart';
+import '../widgets/article_card.dart';
+import '../services/trending_service.dart';
+import '../widgets/trending_topics_widget.dart';
 
 import '../customisations/delivery_page.dart';
 import '../customisations/language_page.dart';
 import '../customisations/summary_page.dart';
 import '../customisations/tone_format.dart';
-import '../services/news_service.dart';
-import '../models/news_article.dart';
-import '../widgets/article_card.dart';
 import 'auth_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -22,10 +27,12 @@ class _HomePageState extends State<HomePage> {
   bool showDigest = true;
   String userName = 'User';
   List<NewsArticle> allArticles = [];
+  List<String> trendingTopics = [];
   bool isLoading = true;
   final Set<String> bookmarkedIds = {};
   final Map<String, bool> likedArticles = {};
   final Map<String, bool> dislikedArticles = {};
+  String? selectedTopic;
 
   @override
   void initState() {
@@ -91,6 +98,7 @@ class _HomePageState extends State<HomePage> {
       List<NewsArticle> fetchedArticles = await NewsService.fetchLatestArticles();
       setState(() {
         allArticles = fetchedArticles;
+        trendingTopics = TrendingService.getTrendingTopics(fetchedArticles);
         isLoading = false;
       });
     } catch (e) {
@@ -198,15 +206,20 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildNewsFeed() {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    if (isLoading) return const Center(child: CircularProgressIndicator());
 
     List<NewsArticle> displayedArticles = (showDigest
             ? allArticles.where((a) => bookmarkedIds.contains(a.id))
             : allArticles)
         .where((a) => !(dislikedArticles[a.id] ?? false))
         .toList();
+
+    if (selectedTopic != null) {
+      displayedArticles = displayedArticles.where((article) {
+        final content = '${article.title} ${article.description}'.toLowerCase();
+        return content.contains(selectedTopic!.toLowerCase());
+      }).toList();
+    }
 
     if (displayedArticles.isEmpty) {
       return Center(child: Text(showDigest ? 'No bookmarked articles.' : 'No articles found.'));
@@ -272,16 +285,20 @@ class _HomePageState extends State<HomePage> {
 
               final currentLiked = likedArticles[article.id] ?? false;
 
-              setState(() {
-                likedArticles[article.id] = !currentLiked;
-                dislikedArticles[article.id] = false;
-              });
+              try {
+                if (!currentLiked) {
+                  await likedRef.set({'liked': true});
+                  await dislikedRef.delete();
+                } else {
+                  await likedRef.delete();
+                }
 
-              if (!currentLiked) {
-                await likedRef.set({'liked': true});
-                await dislikedRef.delete();
-              } else {
-                await likedRef.delete();
+                setState(() {
+                  likedArticles[article.id] = !currentLiked;
+                  dislikedArticles[article.id] = false;
+                });
+              } catch (e) {
+                debugPrint("Error storing like: $e");
               }
             },
             onDislikeToggle: () async {
@@ -390,23 +407,33 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("OneDigest")),
+      appBar: AppBar(
+        title: const Text("📰 OneDigest"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.account_circle, size: 30),
+            onPressed: _showProfileMenu,
+          ),
+        ],
+      ),
       drawer: _buildDrawer(),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('📰 OneDigest', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                IconButton(
-                  icon: const Icon(Icons.account_circle, size: 30),
-                  onPressed: _showProfileMenu,
-                ),
-              ],
-            ),
+          TrendingTopicsWidget(
+            topics: trendingTopics,
+            selectedTopic: selectedTopic,
+            onTopicSelected: (topic) {
+              setState(() {
+                if (selectedTopic == topic) {
+                  selectedTopic = null;
+                } else {
+                  selectedTopic = topic;
+                }
+              });
+            },
           ),
+          const SizedBox(height: 10),
           _buildToggleButtons(),
           const SizedBox(height: 10),
           Expanded(child: _buildNewsFeed()),
