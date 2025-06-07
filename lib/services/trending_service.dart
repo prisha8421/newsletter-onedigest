@@ -1,40 +1,40 @@
 // lib/services/trending_service.dart
+import 'package:collection/collection.dart';
 import '../models/news_article.dart';
 
 class TrendingService {
-  // Basic stopwords to ignore
-  static const List<String> _stopwords = [
-    'the', 'and', 'to', 'of', 'in', 'a', 'on', 'for', 'with', 'is', 'are',
-    'by', 'at', 'an', 'as', 'be', 'this', 'that', 'from', 'it', 'has', 'its',
-    'was', 'will', 'about', 'after', 'into', 'you', 'but', 'their', 'they',
-    'not', 'have', 'he', 'she', 'we', 'i', 'or', 'up', 'new', 'news', 'more',
-    'one', 'all', 'over', 'out', 'his', 'her', 'them', 'which', 'who', 'what',
-    'when', 'how', 'just', 'been', 'than', 'some', 'also', 'so', 'if'
-  ];
+  static final Set<String> _stopWords = {
+    'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'in', 'on',
+    'for', 'of', 'and', 'to', 'with', 'from', 'by', 'at', 'as', 'it', 'that',
+    'this', 'these', 'those', 'will', 'would', 'can', 'could', 'should', 'has',
+    'have', 'had', 'but', 'if', 'or', 'not', 'about', 'also', 'more', 'than',
+    'its', 'he', 'she', 'they', 'we', 'you', 'i', 'their', 'his', 'her', 'them',
+    'our', 'us', 'may', 'just', 'so', 'new', 'latest', 'breaking'
+  };
 
-  static List<String> getTrendingTopics(List<NewsArticle> articles, {int maxTopics = 12}) {
-    final Map<String, int> wordFrequency = {};
+  static List<String> getTrendingTopics(List<NewsArticle> articles, {int topN = 8}) {
+    final Map<String, int> biGramCounts = {};
 
     for (var article in articles) {
-      final text = '${article.title} ${article.description}'.toLowerCase();
-      final words = text
+      final content = '${article.title} ${article.description}'.toLowerCase();
+
+      final words = content
           .replaceAll(RegExp(r'[^\w\s]'), '') // remove punctuation
-          .split(RegExp(r'\s+'))              // split by spaces
-          .where((word) =>
-              word.length > 2 &&
-              !_stopwords.contains(word) &&
-              !word.contains(RegExp(r'\d')))   // filter numbers & stopwords
+          .split(RegExp(r'\s+')) // split into words
+          .where((word) => word.length > 2 && !_stopWords.contains(word))
           .toList();
 
-      for (var word in words) {
-        wordFrequency[word] = (wordFrequency[word] ?? 0) + 1;
+      // Create bi-grams (pairs of adjacent words)
+      for (var i = 0; i < words.length - 1; i++) {
+        final biGram = '${words[i]} ${words[i + 1]}';
+        biGramCounts[biGram] = (biGramCounts[biGram] ?? 0) + 1;
       }
     }
 
-    // Sort words by frequency and return top N
-    final sortedWords = wordFrequency.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final sorted = biGramCounts.entries
+        .where((e) => e.value > 1) // Optional: filter out rare pairs
+        .sorted((a, b) => b.value.compareTo(a.value));
 
-    return sortedWords.take(maxTopics).map((e) => e.key).toList();
+    return sorted.take(topN).map((e) => e.key).toList();
   }
 }

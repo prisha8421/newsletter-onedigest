@@ -1,4 +1,3 @@
-
 // lib/pages/home_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,6 +14,7 @@ import '../customisations/language_page.dart';
 import '../customisations/summary_page.dart';
 import '../customisations/tone_format.dart';
 import 'auth_page.dart';
+import 'search_page.dart'; // <-- Add this import
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -143,6 +143,14 @@ class _HomePageState extends State<HomePage> {
               user != null ? 'Welcome, $userName!' : 'Welcome!',
               style: const TextStyle(color: Colors.white, fontSize: 24),
             ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.search),
+            title: const Text('Search Articles'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
+            },
           ),
           if (user != null) ...[
             ListTile(

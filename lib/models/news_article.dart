@@ -13,6 +13,18 @@ class NewsArticle {
     required this.imageUrl,
   });
 
+  // For Firestore and RSS parsing
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'url': url,
+      'imageUrl': imageUrl,
+    };
+  }
+
+  // From Firestore
   factory NewsArticle.fromMap(Map<String, dynamic> map) {
     return NewsArticle(
       id: map['id'] ?? '',
@@ -23,13 +35,14 @@ class NewsArticle {
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'description': description,
-      'url': url,
-      'imageUrl': imageUrl,
-    };
+  // From NewsAPI search result
+  factory NewsArticle.fromNewsApi(Map<String, dynamic> map) {
+    return NewsArticle(
+      id: map['url'] ?? '', // Use URL as ID
+      title: map['title'] ?? '',
+      description: map['description'] ?? '',
+      url: map['url'] ?? '',
+      imageUrl: map['urlToImage'] ?? '',
+    );
   }
 }
