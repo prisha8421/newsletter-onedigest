@@ -10,7 +10,9 @@ class LanguagePage extends StatefulWidget {
 }
 
 class _LanguagePageState extends State<LanguagePage> {
-  final Map<String, String> languageMap = {
+  String selectedLanguage = 'en';
+
+  final Map<String, String> languageOptions = {
     'en': 'English',
     'hi': 'Hindi',
     'es': 'Spanish',
@@ -22,8 +24,6 @@ class _LanguagePageState extends State<LanguagePage> {
     'pt': 'Portuguese',
   };
 
-  String selectedLanguage = 'en'; // Default
-
   @override
   void initState() {
     super.initState();
@@ -34,50 +34,44 @@ class _LanguagePageState extends State<LanguagePage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userDoc =
-        await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
     final prefs = userDoc.data()?['preferences'] ?? {};
-    final lang = prefs['language'];
+    final language = prefs['language'];
 
-    if (lang != null && languageMap.containsKey(lang)) {
-      setState(() {
-        selectedLanguage = lang;
-      });
-    } else {
-      // Save default 'en' if not set
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .set({
-        'preferences': {'language': 'en'}
+    setState(() {
+      if (language != null && languageOptions.containsKey(language)) {
+        selectedLanguage = language;
+      }
+    });
+
+    // If language preference is missing, set default
+    if (language == null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'preferences': {'language': selectedLanguage},
       }, SetOptions(merge: true));
     }
   }
 
-  Future<void> saveLanguagePreference() async {
+  Future<void> _savePreferences() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not logged in')),
-      );
-      return;
-    }
-
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    if (user == null) return;
 
     try {
-      await userDoc.set({
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'preferences': {
           'language': selectedLanguage,
         }
       }, SetOptions(merge: true));
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Language set to ${languageMap[selectedLanguage]}')),
+        const SnackBar(content: Text('Language preference saved successfully!')),
       );
+      Navigator.pop(context);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving language: $e')),
+        SnackBar(content: Text('Error saving language preference: $e')),
       );
     }
   }
@@ -85,63 +79,145 @@ class _LanguagePageState extends State<LanguagePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Language'),
-        backgroundColor: const Color(0xFF8981DF),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Choose your preferred language for content:',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF3F3986)),
-            ),
-            const SizedBox(height: 30),
-            DropdownButtonFormField<String>(
-              value: selectedLanguage,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: const Color(0xFFE8E6FB),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-              ),
-              icon: const Icon(Icons.language, color: Color(0xFF3F3986)),
-              dropdownColor: Colors.white,
-              items: languageMap.entries.map((entry) {
-                return DropdownMenuItem(
-                  value: entry.key,
-                  child: Text(entry.value),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedLanguage = value!;
-                });
-              },
-            ),
-            const Spacer(),
-            Center(
-              child: ElevatedButton(
-                onPressed: saveLanguagePreference,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3F3986),
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Custom Header
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24.0, 60.0, 24.0, 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Language',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Choose your preferred language for news delivery.',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: const Text(
-                  'Save Language',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                // Language Options
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Select Language',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: languageOptions.entries.map((entry) {
+                          final isSelected = selectedLanguage == entry.key;
+                          return _OptionCard(
+                            text: entry.value,
+                            isSelected: isSelected,
+                            onTap: () => setState(() => selectedLanguage = entry.key),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            )
-          ],
+                const SizedBox(height: 30),
+                // Save Button
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _savePreferences,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Save',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 40.0,
+            left: 16.0,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OptionCard extends StatelessWidget {
+  final String text;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _OptionCard({
+    Key? key,
+    required this.text,
+    required this.isSelected,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF8981DF) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.grey.shade300,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: isSelected ? Colors.white : Colors.black,
+          ),
         ),
       ),
     );
