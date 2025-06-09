@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1051002383483",
+    "project_id": "swe-newsletter",
+    "storage_bucket": "swe-newsletter.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1051002383483:android:2fa305fdabb7414eb2c6de",
+        "android_client_info": {
+          "package_name": "com.example.new_newsletter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQc7JD2jN_mkitXCQDWBbJGA94FxE_BeQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
