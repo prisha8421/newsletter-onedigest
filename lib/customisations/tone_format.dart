@@ -16,9 +16,11 @@ class _ToneFormatPageState extends State<ToneFormatPage> {
 
   final List<String> toneOptions = [
     'Casual',
+    'Professional',
+    'Humorous',
+    'Simple',
     'Formal',
     'Friendly',
-    'Professional',
   ];
   final List<String> formatOptions = [
     'Bullet Points',

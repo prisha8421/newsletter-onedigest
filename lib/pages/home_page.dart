@@ -24,7 +24,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  bool showDigest = true;
+  bool showDigest = false;
   String userName = 'User';
   List<NewsArticle> allArticles = [];
   List<String> trendingTopics = [];
@@ -135,86 +135,312 @@ class _HomePageState extends State<HomePage> {
     final user = FirebaseAuth.instance.currentUser;
 
     return Drawer(
-      child: ListView(
-        children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(color: Colors.deepPurple),
-            child: Text(
-              user != null ? 'Welcome, $userName!' : 'Welcome!',
-              style: const TextStyle(color: Colors.white, fontSize: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade200,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.search),
-            title: const Text('Search Articles'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
-            },
-          ),
-          if (user != null) ...[
-            ListTile(
-              leading: const Icon(Icons.tune),
-              title: const Text('Tone & Format'),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ToneFormatPage())),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF5E35B1), // Slightly darker purple
+                    Color(0xFF7E57C2), // Original deep purple
+                  ],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  Text(
+                    user != null ? 'Welcome, $userName!' : 'Welcome!',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Your personalized news experience',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text('Language Preferences'),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LanguagePage())),
+            Expanded(
+              child: ListView(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5.0),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        splashColor: Colors.deepPurple.withOpacity(0.1),
+                        highlightColor: Colors.deepPurple.withOpacity(0.05),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
+                        },
+                        child: ListTile(
+                          leading: const Icon(Icons.search, color: Colors.deepPurple),
+                          title: const Text(
+                            'Search Articles',
+                            style: TextStyle(
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (user != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5.0),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          splashColor: Colors.deepPurple.withOpacity(0.1),
+                          highlightColor: Colors.deepPurple.withOpacity(0.05),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ToneFormatPage())),
+                          child: ListTile(
+                            leading: const Icon(Icons.tune, color: Colors.deepPurple),
+                            title: const Text(
+                              'Tone & Format',
+                              style: TextStyle(
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5.0),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          splashColor: Colors.deepPurple.withOpacity(0.1),
+                          highlightColor: Colors.deepPurple.withOpacity(0.05),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LanguagePage())),
+                          child: ListTile(
+                            leading: const Icon(Icons.language, color: Colors.deepPurple),
+                            title: const Text(
+                              'Language Preferences',
+                              style: TextStyle(
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5.0),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          splashColor: Colors.deepPurple.withOpacity(0.1),
+                          highlightColor: Colors.deepPurple.withOpacity(0.05),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeliverySettingsPage())),
+                          child: ListTile(
+                            leading: const Icon(Icons.schedule, color: Colors.deepPurple),
+                            title: const Text(
+                              'Delivery Settings',
+                              style: TextStyle(
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5.0),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          splashColor: Colors.deepPurple.withOpacity(0.1),
+                          highlightColor: Colors.deepPurple.withOpacity(0.05),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SummaryPage())),
+                          child: ListTile(
+                            leading: const Icon(Icons.notes, color: Colors.deepPurple),
+                            title: const Text(
+                              'Summary Settings',
+                              style: TextStyle(
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5.0),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          splashColor: Colors.deepPurple.withOpacity(0.1),
+                          highlightColor: Colors.deepPurple.withOpacity(0.05),
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const TopicPreferencePage()));
+                          },
+                          child: ListTile(
+                            leading: const Icon(Icons.list_alt, color: Colors.deepPurple),
+                            title: const Text(
+                              'Topic Preferences',
+                              style: TextStyle(
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5.0),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          splashColor: Colors.deepPurple.withOpacity(0.1),
+                          highlightColor: Colors.deepPurple.withOpacity(0.05),
+                          onTap: () {
+                            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AuthPage()));
+                          },
+                          child: ListTile(
+                            leading: const Icon(Icons.login, color: Colors.deepPurple),
+                            title: const Text(
+                              'Login',
+                              style: TextStyle(
+                                color: Colors.black87,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.schedule),
-              title: const Text('Delivery Settings'),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeliverySettingsPage())),
-            ),
-            ListTile(
-              leading: const Icon(Icons.notes),
-              title: const Text('Summary Settings'),
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SummaryPage())),
-            ),
-            ListTile(
-              leading: const Icon(Icons.list_alt),
-              title: const Text('Topic Preferences'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const TopicPreferencePage()));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
-              onTap: _logout,
-            ),
-          ] else ...[
-            ListTile(
-              leading: const Icon(Icons.login),
-              title: const Text('Login'),
-              onTap: () {
-                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AuthPage()));
-              },
-            ),
-          ]
-        ],
+            if (user != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5.0),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    splashColor: Colors.deepPurple.withOpacity(0.1),
+                    highlightColor: Colors.deepPurple.withOpacity(0.05),
+                    onTap: _logout,
+                    child: ListTile(
+                      leading: const Icon(Icons.logout, color: Colors.deepPurple),
+                      title: const Text(
+                        'Logout',
+                        style: TextStyle(
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildToggleButtons() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.all(4.0),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
         children: [
-          ChoiceChip(
-            label: const Text('Digest'),
-            selected: showDigest,
-            onSelected: (val) => setState(() => showDigest = true),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => showDigest = true),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: showDigest ? const Color(0xFF8981DF) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.article_outlined,
+                      color: showDigest ? Colors.white : Colors.grey.shade600,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Digest',
+                      style: TextStyle(
+                        color: showDigest ? Colors.white : Colors.grey.shade600,
+                        fontWeight: showDigest ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          const SizedBox(width: 10),
-          ChoiceChip(
-            label: const Text('Latest'),
-            selected: !showDigest,
-            onSelected: (val) => setState(() => showDigest = false),
+          const SizedBox(width: 8),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => showDigest = false),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: !showDigest ? const Color(0xFF8981DF) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.update,
+                      color: !showDigest ? Colors.white : Colors.grey.shade600,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Latest',
+                      style: TextStyle(
+                        color: !showDigest ? Colors.white : Colors.grey.shade600,
+                        fontWeight: !showDigest ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -374,14 +600,6 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.tune),
-              title: const Text('View/Edit Preferences'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const ToneFormatPage()));
-              },
-            ),
             if (user != null) ...[
               ListTile(
                 leading: const Icon(Icons.logout),
@@ -431,11 +649,26 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text("📰 OneDigest"),
+        centerTitle: true,
+        toolbarHeight: 80,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 16),
+          child: Text(
+            "OneDigest",
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 30,
+              color: Color(0xFF8981DF),
+            ),
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.account_circle, size: 30),
+            icon: const Icon(Icons.account_circle, size: 30, color: Color(0xFF8981DF)),
             onPressed: _showProfileMenu,
           ),
         ],
@@ -444,22 +677,37 @@ class _HomePageState extends State<HomePage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TrendingTopicsWidget(
-            topics: trendingTopics,
-            selectedTopic: selectedTopic,
-            onTopicSelected: (topic) {
-              setState(() {
-                if (selectedTopic == topic) {
-                  selectedTopic = null;
-                } else {
-                  selectedTopic = topic;
-                }
-              });
-            },
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.shade200,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                TrendingTopicsWidget(
+                  topics: trendingTopics,
+                  selectedTopic: selectedTopic,
+                  onTopicSelected: (topic) {
+                    setState(() {
+                      if (selectedTopic == topic) {
+                        selectedTopic = null;
+                      } else {
+                        selectedTopic = topic;
+                      }
+                    });
+                  },
+                ),
+                _buildToggleButtons(),
+              ],
+            ),
           ),
-          const SizedBox(height: 10),
-          _buildToggleButtons(),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Expanded(child: _buildNewsFeed()),
         ],
       ),

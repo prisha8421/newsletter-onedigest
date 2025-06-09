@@ -29,6 +29,12 @@ class ArticleCard extends StatefulWidget {
 
 class _ArticleCardState extends State<ArticleCard> {
   final FlutterTts flutterTts = FlutterTts();
+  bool isExpanded = false;
+  static const int maxLines = 3;
+  final TextPainter _textPainter = TextPainter(
+    textDirection: TextDirection.ltr,
+    maxLines: maxLines,
+  );
 
   Future<void> _speak(String text) async {
     await flutterTts.setLanguage("en-US");
@@ -39,7 +45,7 @@ class _ArticleCardState extends State<ArticleCard> {
 
   @override
   void dispose() {
-    flutterTts.stop(); // stop TTS if widget is disposed
+    flutterTts.stop();
     super.dispose();
   }
 
@@ -54,15 +60,30 @@ class _ArticleCardState extends State<ArticleCard> {
     }
   }
 
+  bool _needsReadMore(String text) {
+    _textPainter.text = TextSpan(
+      text: text,
+      style: const TextStyle(
+        fontSize: 15,
+        color: Colors.black87,
+        height: 1.4,
+      ),
+    );
+    _textPainter.layout(maxWidth: MediaQuery.of(context).size.width - 64); // Account for padding
+    return _textPainter.didExceedMaxLines;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: _launchArticleUrl,
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.article.imageUrl.isNotEmpty)
               ClipRRect(
@@ -75,36 +96,80 @@ class _ArticleCardState extends State<ArticleCard> {
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.all(12.0),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(widget.article.title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                  const SizedBox(height: 8),
-                  Text(widget.article.description),
+                  Text(
+                    widget.article.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.black,
+                    ),
+                  ),
                   const SizedBox(height: 12),
+                  Text(
+                    widget.article.description,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: Colors.black87,
+                      height: 1.4,
+                    ),
+                    maxLines: isExpanded ? null : maxLines,
+                    overflow: isExpanded ? null : TextOverflow.ellipsis,
+                  ),
+                  if (_needsReadMore(widget.article.description))
+                    TextButton(
+                      onPressed: () => setState(() => isExpanded = !isExpanded),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(50, 30),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        isExpanded ? 'Show less' : 'Read more',
+                        style: const TextStyle(
+                          color: Color(0xFF8981DF),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.volume_up),
-                        onPressed: () => _speak(widget.article.description),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.volume_up, color: Color(0xFF8981DF)),
+                            onPressed: () => _speak(widget.article.description),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              widget.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                              color: widget.isLiked ? const Color(0xFF8981DF) : Colors.grey,
+                            ),
+                            onPressed: widget.onLikeToggle,
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              widget.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined,
+                              color: widget.isDisliked ? const Color(0xFF8981DF) : Colors.grey,
+                            ),
+                            onPressed: widget.onDislikeToggle,
+                          ),
+                        ],
                       ),
                       IconButton(
-                        icon: Icon(widget.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined),
-                        onPressed: widget.onLikeToggle,
-                      ),
-                      IconButton(
-                        icon: Icon(widget.isDisliked ? Icons.thumb_down : Icons.thumb_down_outlined),
-                        onPressed: widget.onDislikeToggle,
-                      ),
-                      IconButton(
-                        icon: Icon(widget.isBookmarked ? Icons.bookmark : Icons.bookmark_outline),
+                        icon: Icon(
+                          widget.isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
+                          color: widget.isBookmarked ? const Color(0xFF8981DF) : Colors.grey,
+                        ),
                         onPressed: widget.onBookmarkToggle,
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
