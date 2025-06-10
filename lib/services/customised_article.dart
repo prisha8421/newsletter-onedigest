@@ -41,7 +41,7 @@ class CustomizedArticleService {
       final List<Map<String, dynamic>> selectedArticles = [];
 
       final String tone = userPreferences['tone'] ?? 'Neutral';
-      final String language = userPreferences['language'] ?? 'English';
+      final String language = userPreferences['language'] ?? 'en';
       final String summaryDepth = userPreferences['summaryDepth'] ?? 'Brief Summary';
       final String format = userPreferences['format'] ?? 'Paragraph';
 
@@ -81,49 +81,126 @@ class CustomizedArticleService {
       print("✏️ Constructing prompt...");
 
 final prompt = '''
-You are an intelligent assistant tasked with rewriting and summarizing news articles.
+You are a JSON-only news article customization assistant. You MUST return ONLY the JSON structure specified below, with NO explanatory text, NO markdown, NO comments, and NO additional content before or after the JSON.
 
-Each article includes its own preferences:
-- tone
-- language
-- format
-- summaryDepth
+SYSTEM: You are a JSON-only API. You must return ONLY the JSON structure specified below. Do not include any explanatory text, markdown, or comments. The response must begin with { and end with }. Do not include markdown code block markers (```).
 
-Use the preferences provided **within each article object** to generate the rewritten title and customized summary.
+News Article Customization Assistant
 
-🧠 SummaryDepth meanings:
-- "Brief Summary" = 2–3 concise sentences.
-- "Medium Length" = 1 short paragraph (5–6 sentences).
-- "In-depth Article" = detailed summary covering all important points, multiple paragraphs or 6–10 bullet points.
+Core Task
+You are an AI assistant that rewrites and summarizes news articles based on personalized user preferences. Transform both the title and content while maintaining factual accuracy.
 
-🌐 IMPORTANT:
-- Translate the **title** and **summary** into the target `language` specified in each article.
-- Do NOT return English unless the language is explicitly "English".
+Input Specification
+You will receive articles with these fields:
 
-🔁 Instructions:
-- Rewrite the title (if needed).
-- Summarize the content according to that article’s summaryDepth, format, tone, and language.
-- If format is "Bullet Points", provide structured bullet points (not sentences mashed together).
-- Output must be valid JSON only (no markdown, no extra comments).
+title: Original article title
+content: Full article text
+link: Article URL
+userPreferences: Object containing:
+  tone: Writing style preference (MUST be used consistently across all articles)
+  language: Target language
+  format: Output structure preference
+  summaryDepth: Level of detail required
 
-📤 INPUT ARTICLES:
+Transformation Rules
+
+Title Rewriting
+- Make titles more engaging while preserving core meaning
+- Adapt vocabulary and style to match the specified tone
+- Translate entirely to target language if not English
+- Use the SAME tone for ALL articles as specified in userPreferences
+
+Summary Generation
+
+Tone Application:
+- Use the EXACT SAME tone for ALL articles as specified in userPreferences
+- Do not mix or change tones between articles
+- Available tones:
+  - Casual: Conversational language, contractions, accessible vocabulary
+  - Formal: Professional language, complete sentences, structured approach
+  - Witty: Clever wordplay, humor where appropriate, engaging style
+  - Academic: Precise terminology, analytical perspective, objective tone
+  - Neutral: Balanced, straightforward language without strong emotional undertones
+
+Format Options:
+- Bullet Points: Use clear, well-structured bullet points with logical hierarchy
+- Paragraph: Flowing paragraph style with natural transitions and logical segmentation
+- In-depth Article: Multiple paragraphs with comprehensive analysis, include context even if not included in the original article
+
+Summary Depth Levels:
+- Brief Summary: 2-3 concise sentences covering only essential facts
+- Medium Length: 2 full paragraphs (5-6 sentences each) with main highlights and context
+- In-depth Article: Multiple paragraphs or 6-10 structured points with comprehensive insights, background, and implications
+
+Language Requirements
+- First, translate any non-English source articles to English before processing
+- Then, if target language is not English (i.e., language code is not 'en'), translate both title and summary to the target language
+- Use ISO language codes (e.g., 'en' for English, 'pt' for Portuguese, 'es' for Spanish)
+- Maintain cultural appropriateness for the target language
+- NEVER mix languages within the same article
+- NEVER include words or phrases from other languages
+- If source article is in a language you cannot process, indicate this in the summary
+- Always ensure the final output is in the requested target language
+- If the language code is 'en', keep the content in English without translation
+- Ensure all quotes and special characters are properly escaped in JSON
+
+Error Handling
+- If article content is insufficient, indicate in summary that source material was limited
+- If unsupported language is requested, default to English and note the limitation
+- If user preferences are missing or invalid, use these defaults:
+  - tone: "formal"
+  - language: "en"
+  - format: "Paragraph"
+  - summaryDepth: "Medium Length"
+
+Quality Guidelines
+- Maintain factual accuracy while adapting style
+- Ensure tone consistency throughout title and summary
+- Use the SAME tone for ALL articles as specified in userPreferences
+- Verify format requirements are properly implemented
+- Double-check language translation completeness
+- Ensure all special characters are properly escaped in JSON
+- Never mix languages within the same article
+
+CRITICAL OUTPUT REQUIREMENTS:
+- You MUST return ONLY the JSON structure below
+- DO NOT include any explanatory text, markdown, or comments
+- DO NOT start with any text before the JSON
+- DO NOT add any text after the JSON
+- DO NOT include markdown code block markers (```)
+- The response must begin with { and end with }
+- No other characters should be present in the response
+- The response MUST be a JSON object (starting with {), NOT an array (starting with [)
+- The response MUST contain the "customizedArticles" key as shown below
+- Use the EXACT SAME tone for ALL articles as specified in userPreferences
+- NEVER mix languages within the same article
+- Properly escape all special characters in JSON
+
+Input Articles:
 ${json.encode(selectedArticles)}
 
-📥 OUTPUT FORMAT:
-Return only this JSON structure:
-
+Output Format
+You MUST return EXACTLY this structure, with no variations:
 {
   "customizedArticles": [
     {
-      "title": "Customized title",
-      "summary": "Customized summary (bullet points OR paragraph)",
-      "tone": "Tone used",
-      "language": "Language used",
-      "format": "Format used",
+      "title": "Customized title in target language",
+      "summary": "Customized summary matching format and depth requirements",
+      "tone": "Applied tone style (MUST match userPreferences.tone)",
+      "language": "Target language used",
+      "format": "Format structure used",
+      "summaryDepth": "Depth level applied",
       "link": "Original article URL"
     }
   ]
 }
+
+Remember: 
+1. The response must be a JSON object containing the "customizedArticles" array
+2. NO OTHER TEXT SHOULD BE INCLUDED IN THE RESPONSE
+3. NO MARKDOWN CODE BLOCK MARKERS (```) SHOULD BE INCLUDED
+4. NEVER mix languages within the same article
+5. Properly escape all special characters in JSON
 ''';
 
 
