@@ -107,8 +107,8 @@ Transformation Rules
 Title Rewriting
 - Make titles more engaging while preserving core meaning
 - Adapt vocabulary and style to match the specified tone
-- Translate entirely to target language if not English
-- Use the SAME tone for ALL articles as specified in userPreferences
+- IMPORTANT: DO NOT translate the title or content unless explicitly requested
+- If language is 'en', keep everything in English
 
 Summary Generation
 
@@ -129,20 +129,22 @@ Format Options:
 
 Summary Depth Levels:
 - Brief Summary: 2-3 concise sentences covering only essential facts
-- Medium Length: 2 full paragraphs (5-6 sentences each) with main highlights and context
+- Medium Length: 5 full paragraphs (5-6 sentences each) with main highlights and context
 - In-depth Article: Multiple paragraphs or 6-10 structured points with comprehensive insights, background, and implications
 
 Language Requirements
-- First, translate any non-English source articles to English before processing
-- Then, if target language is not English (i.e., language code is not 'en'), translate both title and summary to the target language
-- Use ISO language codes (e.g., 'en' for English, 'pt' for Portuguese, 'es' for Spanish)
-- Maintain cultural appropriateness for the target language
+- CRITICAL: If language is 'en', keep ALL content in English
+- CRITICAL: If language is not 'en', translate the ENTIRE article (title and content) to the specified language
 - NEVER mix languages within the same article
 - NEVER include words or phrases from other languages
+- Use ISO language codes (e.g., 'en' for English, 'pt' for Portuguese, 'es' for Spanish)
 - If source article is in a language you cannot process, indicate this in the summary
 - Always ensure the final output is in the requested target language
 - If the language code is 'en', keep the content in English without translation
 - Ensure all quotes and special characters are properly escaped in JSON
+- When translating, maintain the original meaning and context
+- Ensure all numbers, dates, and proper nouns are properly localized
+- Keep the same tone and style in the translated content
 
 Error Handling
 - If article content is insufficient, indicate in summary that source material was limited
@@ -175,6 +177,7 @@ CRITICAL OUTPUT REQUIREMENTS:
 - Use the EXACT SAME tone for ALL articles as specified in userPreferences
 - NEVER mix languages within the same article
 - Properly escape all special characters in JSON
+- CRITICAL: If language is 'en', keep ALL content in English
 
 Input Articles:
 ${json.encode(selectedArticles)}
@@ -201,6 +204,8 @@ Remember:
 3. NO MARKDOWN CODE BLOCK MARKERS (```) SHOULD BE INCLUDED
 4. NEVER mix languages within the same article
 5. Properly escape all special characters in JSON
+6. CRITICAL: If language is 'en', keep ALL content in English
+7. CRITICAL: If language is not 'en', translate the ENTIRE article to the specified language
 ''';
 
 

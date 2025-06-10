@@ -42,7 +42,7 @@ class SchedulerService {
     // Get user preferences
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
     final preferences = userDoc.data()?['preferences'] ?? {};
-    final deliveryTime = preferences['deliveryTime'] ?? '10:36';
+    final deliveryTime = preferences['deliveryTime'] ?? '12:43';
 
     final now = DateTime.now();
     final deliveryDateTime = _parseDeliveryTime(deliveryTime);
