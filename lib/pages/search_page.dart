@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import '../models/news_article.dart';
 import '../services/news_api_search_service.dart';
 import '../widgets/article_card.dart';
@@ -58,7 +59,30 @@ class _SearchPageState extends State<SearchPage> {
               child: CircularProgressIndicator(),
             ),
           if (_results.isEmpty && !_loading)
-            const Expanded(child: Center(child: Text("No results found."))),
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Lottie.asset(
+                      'assets/icon/waiting2.json',
+                      width: 300,
+                      height: 300,
+                      fit: BoxFit.contain,
+                      repeat: true,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      "No results found.",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (_results.isNotEmpty)
             Expanded(
               child: ListView.builder(

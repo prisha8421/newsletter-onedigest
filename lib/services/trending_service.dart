@@ -9,7 +9,7 @@ class TrendingService {
     'this', 'these', 'those', 'will', 'would', 'can', 'could', 'should', 'has',
     'have', 'had', 'but', 'if', 'or', 'not', 'about', 'also', 'more', 'than',
     'its', 'he', 'she', 'they', 'we', 'you', 'i', 'their', 'his', 'her', 'them',
-    'our', 'us', 'may', 'just', 'so', 'new', 'latest', 'breaking'
+    'our', 'us', 'may', 'just', 'so', 'new', 'latest', 'breaking' , 'continue', 'reading'
   };
 
   static List<String> getTrendingTopics(List<NewsArticle> articles, {int topN = 8}) {

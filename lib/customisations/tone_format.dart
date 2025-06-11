@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lottie/lottie.dart';
 import '../database/user_details.dart';
 
 class ToneFormatPage extends StatefulWidget {
@@ -13,6 +14,7 @@ class ToneFormatPage extends StatefulWidget {
 class _ToneFormatPageState extends State<ToneFormatPage> {
   String selectedTone = 'Casual';
   String selectedFormat = 'Bullet Points';
+  bool showSaveAnimation = false;
 
   final List<String> toneOptions = [
     'Casual',
@@ -74,10 +76,18 @@ class _ToneFormatPageState extends State<ToneFormatPage> {
       }, SetOptions(merge: true));
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preferences saved successfully!')),
-      );
-      Navigator.pop(context);
+      setState(() {
+        showSaveAnimation = true;
+      });
+
+      // Hide the save animation after 4 seconds
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) {
+          setState(() {
+            showSaveAnimation = false;
+          });
+        }
+      });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -220,6 +230,19 @@ class _ToneFormatPageState extends State<ToneFormatPage> {
               onPressed: () => Navigator.pop(context),
             ),
           ),
+          // Save Success Animation Overlay
+          if (showSaveAnimation)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Lottie.asset(
+                  'assets/icon/done.json',
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -232,11 +255,11 @@ class _OptionCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _OptionCard({
-    Key? key,
+    super.key,
     required this.text,
     required this.isSelected,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

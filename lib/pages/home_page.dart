@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:lottie/lottie.dart';
 
 import '../services/news_service.dart';
 import '../models/news_article.dart';
@@ -424,13 +425,13 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.update,
+                      Icons.person,
                       color: !showDigest ? Colors.white : Colors.grey.shade600,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Latest',
+                      'For You',
                       style: TextStyle(
                         color: !showDigest ? Colors.white : Colors.grey.shade600,
                         fontWeight: !showDigest ? FontWeight.bold : FontWeight.normal,
@@ -448,7 +449,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildNewsFeed() {
-    if (isLoading) return const Center(child: CircularProgressIndicator());
+    if (isLoading) {
+      return Center(
+        child: Lottie.asset(
+          'assets/icon/loading_plane.json',
+          width: 200,
+          height: 200,
+          fit: BoxFit.contain,
+        ),
+      );
+    }
 
     List<NewsArticle> displayedArticles = (showDigest
             ? allArticles.where((a) => bookmarkedIds.contains(a.id))

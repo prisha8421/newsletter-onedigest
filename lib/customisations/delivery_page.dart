@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:ui';
+import 'package:lottie/lottie.dart';
 import '../services/scheduler_service.dart';
 
 class DeliverySettingsPage extends StatefulWidget {
@@ -13,15 +15,12 @@ class DeliverySettingsPage extends StatefulWidget {
 class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
   String selectedDelivery = 'email';
   bool isSending = false;
+  bool showSuccessAnimation = false;
+  bool showSaveAnimation = false;
   final Set<String> selectedChannels = {};
   User? user;
   TimeOfDay selectedTime = const TimeOfDay(hour: 9, minute: 0);
-  bool notificationsEnabled = true;
-
-  final Map<String, String> deliveryOptions = {
-    'email': 'Email',
-    'push': 'Push Notification',
-  };
+  bool isEmailEnabled = true;
 
   @override
   void initState() {
@@ -34,14 +33,18 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
   Future<void> _loadUserSettings() async {
     if (user == null) return;
 
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user!.uid).get();
+    final userDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user!.uid)
+            .get();
     final prefs = userDoc.data()?['preferences'] ?? {};
     final channels = prefs['channels'];
     final deliveryTime = prefs['deliveryTime'] ?? '09:00';
-    final notifications = prefs['notifications'] ?? true;
+    final emailEnabled = prefs['emailEnabled'] ?? true;
 
     setState(() {
-      notificationsEnabled = notifications;
+      isEmailEnabled = emailEnabled;
     });
 
     // Parse the delivery time
@@ -62,8 +65,8 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
         'preferences': {
           'channels': ['Email'],
           'deliveryTime': '09:00',
-          'notifications': true,
-        }
+          'emailEnabled': true,
+        },
       }, SetOptions(merge: true));
     }
 
@@ -74,12 +77,16 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+    final userDoc =
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
     final prefs = userDoc.data()?['preferences'] ?? {};
     final delivery = prefs['delivery'];
 
     setState(() {
-      if (delivery != null && deliveryOptions.containsKey(delivery)) {
+      if (delivery != null) {
         selectedDelivery = delivery;
       }
     });
@@ -90,16 +97,6 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
         'preferences': {'delivery': selectedDelivery},
       }, SetOptions(merge: true));
     }
-  }
-
-  void toggleChannel(String channel) {
-    setState(() {
-      if (selectedChannels.contains(channel)) {
-        selectedChannels.remove(channel);
-      } else {
-        selectedChannels.add(channel);
-      }
-    });
   }
 
   Future<void> _selectTime() async {
@@ -132,20 +129,27 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
     try {
       final schedulerService = SchedulerService();
       await schedulerService.sendScheduledNewsletter();
-      
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Newsletter sent successfully!')),
-      );
+      setState(() {
+        isSending = false;
+        showSuccessAnimation = true;
+      });
+
+      // Hide the success animation after 5 seconds
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) {
+          setState(() {
+            showSuccessAnimation = false;
+          });
+        }
+      });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sending newsletter: $e')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => isSending = false);
-      }
+      setState(() => isSending = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error sending newsletter: $e')));
     }
   }
 
@@ -154,21 +158,36 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
     if (user == null) return;
 
     try {
-      final timeString = '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+      final timeString =
+          '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
+
+      // Update delivery time in scheduler
+      final schedulerService = SchedulerService();
+      await schedulerService.updateDeliveryTime(timeString);
+
+      // Save other preferences
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'preferences': {
           'delivery': selectedDelivery,
           'channels': selectedChannels.toList(),
-          'deliveryTime': timeString,
-          'notifications': notificationsEnabled,
-        }
+          'emailEnabled': isEmailEnabled,
+        },
       }, SetOptions(merge: true));
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Delivery preference saved successfully!')),
-      );
-      Navigator.pop(context);
+      setState(() {
+        showSaveAnimation = true;
+      });
+
+      // Hide the save animation after 2 seconds and then navigate back
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() {
+            showSaveAnimation = false;
+          });
+          Navigator.pop(context);
+        }
+      });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -205,113 +224,61 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
                       const SizedBox(height: 8),
                       const Text(
                         'Choose how you want to receive your news updates.',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
                       ),
                     ],
                   ),
                 ),
-                // Notifications Toggle
+                // Email Settings
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Notifications',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
                       Container(
-                        padding: const EdgeInsets.all(16),
+                        height: 100,
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.white.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: Colors.grey.shade300,
+                            color: Colors.grey.shade200,
                             width: 1,
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.shade200.withOpacity(0.5),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Enable Notifications',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Colors.white.withOpacity(0.8),
+                                    Colors.white.withOpacity(0.6),
+                                  ],
+                                ),
+                              ),
+                              child: _NotificationToggle(
+                                title: 'Email',
+                                subtitle: 'Receive updates via email',
+                                value: isEmailEnabled,
+                                onChanged: (value) {
+                                  setState(() {
+                                    isEmailEnabled = value;
+                                  });
+                                },
                               ),
                             ),
-                            Switch(
-                              value: notificationsEnabled,
-                              onChanged: (value) {
-                                setState(() {
-                                  notificationsEnabled = value;
-                                });
-                              },
-                              activeColor: const Color(0xFF8981DF),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                // Delivery Options
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Select Delivery Method',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.grey.shade300,
-                            width: 1,
                           ),
-                        ),
-                        child: Column(
-                          children: [
-                            _NotificationToggle(
-                              title: 'Email',
-                              subtitle: 'Receive updates via email',
-                              value: selectedDelivery == 'email',
-                              onChanged: (value) {
-                                if (value) {
-                                  setState(() => selectedDelivery = 'email');
-                                }
-                              },
-                            ),
-                            Divider(height: 1, color: Colors.grey.shade200),
-                            _NotificationToggle(
-                              title: 'Push Notifications',
-                              subtitle: 'Get instant updates on your device',
-                              value: selectedDelivery == 'push',
-                              onChanged: (value) {
-                                if (value) {
-                                  setState(() => selectedDelivery = 'push');
-                                }
-                              },
-                            ),
-                          ],
                         ),
                       ),
                     ],
@@ -333,31 +300,41 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      GestureDetector(
-                        onTap: _selectTime,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey.shade300,
-                              width: 1,
-                            ),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1,
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Daily at',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: _selectTime,
+                              icon: const Icon(
+                                Icons.access_time,
+                                color: Color(0xFF8981DF),
+                              ),
+                              label: Text(
                                 '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  color: Color(0xFF8981DF),
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              const Icon(Icons.access_time, color: Color(0xFF8981DF)),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -371,16 +348,19 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: isSending ? null : sendImmediateNewsletter,
-                      icon: isSending
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : const Icon(Icons.send, color: Colors.white),
+                      icon:
+                          isSending
+                              ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                              : const Icon(Icons.send, color: Colors.white),
                       label: Text(
                         isSending ? 'Sending...' : 'Send Newsletter Now',
                         style: const TextStyle(
@@ -401,40 +381,59 @@ class _DeliverySettingsPageState extends State<DeliverySettingsPage> {
                 const SizedBox(height: 30),
                 // Save Button
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: _savePreferences,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
+                        backgroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: Color(0xFF8981DF)),
                         ),
                       ),
                       child: const Text(
-                        'Save',
+                        'Save Changes',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
+                          color: Color(0xFF8981DF),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
                 ),
+                const SizedBox(height: 40),
               ],
             ),
           ),
-          Positioned(
-            top: 40.0,
-            left: 16.0,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black),
-              onPressed: () => Navigator.pop(context),
+          // Success Animation Overlay for Newsletter
+          if (showSuccessAnimation)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Lottie.asset(
+                  'assets/icon/mail_sent2.json',
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.contain,
+                ),
+              ),
             ),
-          ),
+          // Save Success Animation Overlay
+          if (showSaveAnimation)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Lottie.asset(
+                  'assets/icon/done.json',
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -448,12 +447,12 @@ class _NotificationToggle extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   const _NotificationToggle({
-    Key? key,
+    super.key,
     required this.title,
     required this.subtitle,
     required this.value,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -470,18 +469,15 @@ class _NotificationToggle extends StatelessWidget {
                   Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
                 ],
               ),

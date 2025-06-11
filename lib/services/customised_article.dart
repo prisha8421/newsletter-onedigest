@@ -235,7 +235,8 @@ Remember:
 
         late final Map<String, dynamic> extractedJson;
         try {
-          final cleaned = content.trim();
+          // Remove markdown code block markers if present
+          final cleaned = content.trim().replaceAll('```', '').trim();
           extractedJson = json.decode(cleaned);
         } catch (e) {
           print("❌ Failed to decode model output: $e");

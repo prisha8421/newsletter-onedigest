@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lottie/lottie.dart';
 
 class SummaryPage extends StatefulWidget {
   const SummaryPage({super.key});
@@ -11,6 +12,7 @@ class SummaryPage extends StatefulWidget {
 
 class _SummaryPageState extends State<SummaryPage> with SingleTickerProviderStateMixin {
   String selectedDepth = 'Brief Summary';
+  bool showSaveAnimation = false;
   late AnimationController _animationController;
   late Animation<double> _progressAnimation;
 
@@ -103,10 +105,18 @@ class _SummaryPageState extends State<SummaryPage> with SingleTickerProviderStat
       }, SetOptions(merge: true));
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Summary preference saved successfully!')),
-      );
-      Navigator.pop(context);
+      setState(() {
+        showSaveAnimation = true;
+      });
+
+      // Hide the save animation after 4 seconds
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) {
+          setState(() {
+            showSaveAnimation = false;
+          });
+        }
+      });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -367,6 +377,19 @@ class _SummaryPageState extends State<SummaryPage> with SingleTickerProviderStat
               onPressed: () => Navigator.pop(context),
             ),
           ),
+          // Save Success Animation Overlay
+          if (showSaveAnimation)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Lottie.asset(
+                  'assets/icon/done.json',
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -379,11 +402,11 @@ class _DepthIndicator extends StatelessWidget {
   final int position;
 
   const _DepthIndicator({
-    Key? key,
+    super.key,
     required this.label,
     required this.isSelected,
     required this.position,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

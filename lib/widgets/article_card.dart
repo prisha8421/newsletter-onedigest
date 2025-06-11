@@ -13,7 +13,7 @@ class ArticleCard extends StatefulWidget {
   final VoidCallback onDislikeToggle;
 
   const ArticleCard({
-    Key? key,
+    super.key,
     required this.article,
     required this.isBookmarked,
     required this.isLiked,
@@ -21,7 +21,7 @@ class ArticleCard extends StatefulWidget {
     required this.onBookmarkToggle,
     required this.onLikeToggle,
     required this.onDislikeToggle,
-  }) : super(key: key);
+  });
 
   @override
   State<ArticleCard> createState() => _ArticleCardState();

@@ -25,8 +25,21 @@ class SchedulerService {
     _customizedService = CustomizedArticleService(
       newsService: newsService,
       pdfService: pdfService,
-    
     );
+  }
+
+  /// Update delivery time and restart scheduler
+  Future<void> updateDeliveryTime(String newDeliveryTime) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    // Update the delivery time in Firestore
+    await _firestore.collection('users').doc(user.uid).update({
+      'preferences.deliveryTime': newDeliveryTime,
+    });
+
+    // Restart the scheduler with the new time
+    await startScheduler();
   }
 
   /// Start the scheduler for the current user

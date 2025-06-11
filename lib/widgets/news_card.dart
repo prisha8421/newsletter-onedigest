@@ -1,14 +1,15 @@
+import 'package:flutter/material.dart';
 class NewsCard extends StatefulWidget {
   final Article article;
   final bool isDigest;
   final VoidCallback? onTap;
 
   const NewsCard({
-    Key? key,
+    super.key,
     required this.article,
     this.isDigest = false,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   State<NewsCard> createState() => _NewsCardState();

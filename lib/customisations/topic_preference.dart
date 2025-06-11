@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:lottie/lottie.dart';
+import '../database/user_details.dart';
 
 class TopicPreferencePage extends StatefulWidget {
   const TopicPreferencePage({super.key});
@@ -35,6 +37,7 @@ class _TopicPreferencePageState extends State<TopicPreferencePage> {
   };
 
   final Set<String> selectedTopics = {};
+  bool showSaveAnimation = false;
 
   @override
   void initState() {
@@ -77,28 +80,32 @@ class _TopicPreferencePageState extends State<TopicPreferencePage> {
     });
   }
 
-  Future<void> savePreferences() async {
+  Future<void> _savePreferences() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User not logged in')),
-      );
-      return;
-    }
-
-    final userDoc = FirebaseFirestore.instance.collection('users').doc(user.uid);
+    if (user == null) return;
 
     try {
-      await userDoc.set({
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'preferences': {
           'topics': selectedTopics.toList(),
         }
       }, SetOptions(merge: true));
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Preferences saved: ${selectedTopics.join(', ')}')),
-      );
+      if (!mounted) return;
+      setState(() {
+        showSaveAnimation = true;
+      });
+
+      // Hide the save animation after 4 seconds
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) {
+          setState(() {
+            showSaveAnimation = false;
+          });
+        }
+      });
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error saving preferences: $e')),
       );
@@ -168,7 +175,7 @@ class _TopicPreferencePageState extends State<TopicPreferencePage> {
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: savePreferences,
+                      onPressed: _savePreferences,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 16),
@@ -198,6 +205,19 @@ class _TopicPreferencePageState extends State<TopicPreferencePage> {
               onPressed: () => Navigator.pop(context),
             ),
           ),
+          // Save Success Animation Overlay
+          if (showSaveAnimation)
+            Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Center(
+                child: Lottie.asset(
+                  'assets/icon/done.json',
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -211,12 +231,12 @@ class _CategoryCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _CategoryCard({
-    Key? key,
+    super.key,
     required this.topic,
     required this.icon,
     required this.isSelected,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

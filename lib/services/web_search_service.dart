@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/news_article.dart';
-import '../secrets.dart';
 
 class WebSearchService {
   static const String _apiKey = 'Secrets.newsApiKey'; // Replace with your key
